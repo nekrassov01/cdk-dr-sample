@@ -12,20 +12,22 @@ import {
 import { Construct } from "constructs";
 import { readFileSync } from "fs";
 
-export interface DrSampleStackProps extends StackProps {
+export interface DrSampleResourceStackProps extends StackProps {
   serviceName: string;
   area: String;
+  azA: string;
+  azC: string;
   hostedZoneName: string;
   userDataFilePath: string;
-  azA: string;
-  azB: string;
 }
 
-export class DrSampleStack extends Stack {
-  constructor(scope: Construct, id: string, props: DrSampleStackProps) {
+export class DrSampleResourceStack extends Stack {
+  public readonly alb: elbv2.ApplicationLoadBalancer;
+
+  constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
 
-    const { serviceName, area, hostedZoneName, userDataFilePath, azA, azB } = props;
+    const { serviceName, area, azA, azC, hostedZoneName, userDataFilePath } = props;
 
     // Domain name
     const globalDomainName = `${serviceName}.${hostedZoneName}`;
@@ -47,7 +49,7 @@ export class DrSampleStack extends Stack {
     // VPC
     const vpc = new ec2.Vpc(this, "VPC", {
       ipAddresses: ec2.IpAddresses.cidr("10.0.0.0/16"),
-      availabilityZones: [azA, azB],
+      availabilityZones: [azA, azC],
       natGateways: 1,
       subnetConfiguration: [
         {
@@ -159,6 +161,8 @@ export class DrSampleStack extends Stack {
       internetFacing: true,
       securityGroup: albSecurityGroup,
     });
+    alb.node.addDependency(ec2Instance1);
+    alb.node.addDependency(ec2Instance2);
     albSecurityGroup.addIngressRule(
       ec2.Peer.ipv4("0.0.0.0/0"),
       ec2.Port.tcp(443),
@@ -226,5 +230,8 @@ export class DrSampleStack extends Stack {
       zone: hostedZone,
     });
     albARecord.node.addDependency(alb);
+
+    // Add ALB to props
+    this.alb = alb;
   }
 }

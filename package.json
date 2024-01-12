@@ -2,7 +2,7 @@
   "name": "cdk-dr-sample",
   "version": "0.1.0",
   "bin": {
-    "cdk-dr-sample": "bin/cdk-dr-sample.js"
+    "cdk-dr-sample": "bin/main.js"
   },
   "scripts": {
     "build": "tsc",
