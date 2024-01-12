@@ -83,11 +83,11 @@ export class DrSampleAcceleratorStack extends Stack {
     });
 
     // Alias record for Global Accelerator
-    const albARecord = new route53.ARecord(this, "GlobalAcceleratorARecord", {
+    const gaARecord = new route53.ARecord(this, "GlobalAcceleratorARecord", {
       recordName: globalDomainName,
       target: route53.RecordTarget.fromAlias(new route53_targets.GlobalAcceleratorTarget(accelerator)),
       zone: hostedZone,
     });
-    albARecord.node.addDependency(accelerator);
+    gaARecord.node.addDependency(accelerator);
   }
 }
