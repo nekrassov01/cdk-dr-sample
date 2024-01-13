@@ -45,16 +45,10 @@ export class DrSampleAcceleratorStack extends Stack {
     // Endpoint group for ALB 1
     listener.addEndpointGroup("GlobalAcceleratorEndpointGroup1", {
       endpoints: [
-        new ApplicationLoadBalancerEndpoint(
-          ApplicationLoadBalancer.fromApplicationLoadBalancerAttributes(this, "ALB1", {
-            loadBalancerArn: alb1.loadBalancerArn,
-            securityGroupId: alb1.loadBalancerSecurityGroups[0],
-          }),
-          {
-            weight: 128,
-            preserveClientIp: true,
-          }
-        ),
+        new ApplicationLoadBalancerEndpoint(alb1, {
+          weight: 128,
+          preserveClientIp: true,
+        }),
       ],
       trafficDialPercentage: 100,
     });
@@ -62,16 +56,10 @@ export class DrSampleAcceleratorStack extends Stack {
     // Endpoint group for ALB 2
     listener.addEndpointGroup("GlobalAcceleratorEndpointGroup2", {
       endpoints: [
-        new ApplicationLoadBalancerEndpoint(
-          ApplicationLoadBalancer.fromApplicationLoadBalancerAttributes(this, "ALB2", {
-            loadBalancerArn: alb2.loadBalancerArn,
-            securityGroupId: alb2.loadBalancerSecurityGroups[0],
-          }),
-          {
-            weight: 128,
-            preserveClientIp: true,
-          }
-        ),
+        new ApplicationLoadBalancerEndpoint(alb2, {
+          weight: 128,
+          preserveClientIp: true,
+        }),
       ],
       trafficDialPercentage: 0,
     });
