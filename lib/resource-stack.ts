@@ -29,8 +29,8 @@ import { readFileSync } from "fs";
 export interface DrSampleResourceStackProps extends StackProps {
   serviceName: string;
   area: string;
-  azA: string;
-  azC: string;
+  azPrimary: string;
+  azSecondary: string;
   hostedZoneName: string;
   globalDomainName: string;
   regionalDomainName: string;
@@ -43,8 +43,16 @@ export class DrSampleResourceStack extends Stack {
   constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
 
-    const { serviceName, area, azA, azC, hostedZoneName, globalDomainName, regionalDomainName, userDataFilePath } =
-      props;
+    const {
+      serviceName,
+      area,
+      azPrimary,
+      azSecondary,
+      hostedZoneName,
+      globalDomainName,
+      regionalDomainName,
+      userDataFilePath,
+    } = props;
 
     // Hosted zone
     const hostedZone = HostedZone.fromLookup(this, "HostedZone", {
@@ -62,7 +70,7 @@ export class DrSampleResourceStack extends Stack {
     // VPC
     const vpc = new Vpc(this, "VPC", {
       ipAddresses: IpAddresses.cidr("10.0.0.0/16"),
-      availabilityZones: [azA, azC],
+      availabilityZones: [azPrimary, azSecondary],
       natGateways: 1,
       subnetConfiguration: [
         {
@@ -131,7 +139,7 @@ export class DrSampleResourceStack extends Stack {
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
-      availabilityZone: azA,
+      availabilityZone: azPrimary,
       securityGroup: ec2SecurityGroup,
       role: ec2Role,
       userData: userData,
@@ -148,7 +156,7 @@ export class DrSampleResourceStack extends Stack {
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
-      availabilityZone: azA,
+      availabilityZone: azPrimary,
       securityGroup: ec2SecurityGroup,
       role: ec2Role,
       userData: userData,
