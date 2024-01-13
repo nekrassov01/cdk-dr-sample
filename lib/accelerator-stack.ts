@@ -21,12 +21,12 @@ export class DrSampleAcceleratorStack extends Stack {
     const { serviceName, hostedZoneName, globalDomainName, alb1, alb2 } = props;
 
     // Hosted zone
-    const hostedZone = HostedZone.fromLookup(this, "HostedZone", {
+    const hostedZone = HostedZone.fromLookup(this, "Route53HostedZone", {
       domainName: hostedZoneName,
     });
 
     // Global Accelerator
-    const accelerator = new Accelerator(this, "Accelerator", {
+    const accelerator = new Accelerator(this, "GlobalAccelerator", {
       acceleratorName: `${serviceName}-accelerator`,
       enabled: true,
       ipAddressType: IpAddressType.IPV4,
@@ -34,7 +34,7 @@ export class DrSampleAcceleratorStack extends Stack {
     accelerator.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     // Listener
-    const listener = accelerator.addListener("Listener", {
+    const listener = accelerator.addListener("GlobalAcceleratorListener", {
       listenerName: `${serviceName}-accelerator-listener`,
       protocol: ConnectionProtocol.TCP,
       portRanges: [{ fromPort: 443 }],
@@ -43,7 +43,7 @@ export class DrSampleAcceleratorStack extends Stack {
     listener.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     // Endpoint group for ALB 1
-    listener.addEndpointGroup("EndpointGroup1", {
+    listener.addEndpointGroup("GlobalAcceleratorEndpointGroup1", {
       endpoints: [
         new ApplicationLoadBalancerEndpoint(
           ApplicationLoadBalancer.fromApplicationLoadBalancerAttributes(this, "ALB1", {
@@ -60,7 +60,7 @@ export class DrSampleAcceleratorStack extends Stack {
     });
 
     // Endpoint group for ALB 2
-    listener.addEndpointGroup("EndpointGroup2", {
+    listener.addEndpointGroup("GlobalAcceleratorEndpointGroup2", {
       endpoints: [
         new ApplicationLoadBalancerEndpoint(
           ApplicationLoadBalancer.fromApplicationLoadBalancerAttributes(this, "ALB2", {
@@ -77,7 +77,7 @@ export class DrSampleAcceleratorStack extends Stack {
     });
 
     // Alias record for Global Accelerator
-    const gaARecord = new ARecord(this, "GlobalAcceleratorARecord", {
+    const gaARecord = new ARecord(this, "Route53GlobalAcceleratorARecord", {
       recordName: globalDomainName,
       target: RecordTarget.fromAlias(new GlobalAcceleratorTarget(accelerator)),
       zone: hostedZone,

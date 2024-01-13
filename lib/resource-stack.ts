@@ -55,12 +55,12 @@ export class DrSampleResourceStack extends Stack {
     } = props;
 
     // Hosted zone
-    const hostedZone = HostedZone.fromLookup(this, "HostedZone", {
+    const hostedZone = HostedZone.fromLookup(this, "Route53HostedZone", {
       domainName: hostedZoneName,
     });
 
     // Certificate
-    const certificate = new Certificate(this, "Certificate", {
+    const certificate = new Certificate(this, "ACMCertificate", {
       certificateName: `${serviceName}-${area}-certificate`,
       domainName: regionalDomainName,
       subjectAlternativeNames: ["*." + regionalDomainName, globalDomainName, "*." + globalDomainName],
@@ -68,7 +68,7 @@ export class DrSampleResourceStack extends Stack {
     });
 
     // VPC
-    const vpc = new Vpc(this, "VPC", {
+    const vpc = new Vpc(this, "EC2VPC", {
       ipAddresses: IpAddresses.cidr("10.0.0.0/16"),
       availabilityZones: [azPrimary, azSecondary],
       natGateways: 1,
@@ -93,21 +93,21 @@ export class DrSampleResourceStack extends Stack {
     });
 
     // EC2 instance role (currently not in use)
-    const ec2Role = new Role(this, `InstanceRole`, {
+    const ec2Role = new Role(this, "IAMEC2InstanceRole", {
       roleName: `${serviceName}-${area}-instance-role`,
       assumedBy: new ServicePrincipal("amazonaws.com"),
       managedPolicies: [
         ManagedPolicy.fromManagedPolicyArn(this, "SSMAccess", "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"),
       ],
     });
-    new CfnInstanceProfile(this, "InstanceProfile", {
+    new CfnInstanceProfile(this, "IAMEC2InstanceProfile", {
       instanceProfileName: `${serviceName}-${area}-instance-profile`,
       roles: [ec2Role.roleName],
     });
 
     // EC2 SecurityGroup
     const ec2SecurityGroupName = `${serviceName}-${area}-ec2-security-group`;
-    const ec2SecurityGroup = new SecurityGroup(this, "EC2SecurityGroup", {
+    const ec2SecurityGroup = new SecurityGroup(this, "EC2InstanceSecurityGroup", {
       securityGroupName: ec2SecurityGroupName,
       description: ec2SecurityGroupName,
       vpc: vpc,
@@ -191,7 +191,7 @@ export class DrSampleResourceStack extends Stack {
     ec2Instance2.connections.allowFrom(alb, Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
 
     // ALB HTTPS listener
-    const albListener = alb.addListener("Listener", {
+    const albListener = alb.addListener("ALBListener", {
       protocol: ApplicationProtocol.HTTPS,
       sslPolicy: SslPolicy.TLS13_13,
       certificates: [
@@ -200,7 +200,7 @@ export class DrSampleResourceStack extends Stack {
         },
       ],
     });
-    albListener.addTargets("ALBTarget", {
+    albListener.addTargets("ALBTargetGroup", {
       targetGroupName: `${serviceName}-${area}-tg`,
       targets: [new InstanceTarget(ec2Instance1, 80), new InstanceTarget(ec2Instance2, 80)],
       protocol: ApplicationProtocol.HTTP,
@@ -210,7 +210,7 @@ export class DrSampleResourceStack extends Stack {
 
     // EC2 Instance Connect endpoint SecurityGroup
     const eicSecurityGroupName = `${serviceName}-${area}-eic-security-group`;
-    const eicSecurityGroup = new SecurityGroup(this, "EICSecurityGroup", {
+    const eicSecurityGroup = new SecurityGroup(this, "EC2InstanceConnectSecurityGroup", {
       securityGroupName: eicSecurityGroupName,
       description: eicSecurityGroupName,
       vpc: vpc,
@@ -242,7 +242,7 @@ export class DrSampleResourceStack extends Stack {
     );
 
     // Alias record for ALB
-    const albARecord = new ARecord(this, "ALBARecord", {
+    const albARecord = new ARecord(this, "Route53ALBARecord", {
       recordName: regionalDomainName,
       target: RecordTarget.fromAlias(new LoadBalancerTarget(alb)),
       zone: hostedZone,
