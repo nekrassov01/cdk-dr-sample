@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-import "source-map-support/register";
 import { App, Tags } from "aws-cdk-lib";
-import { DrSampleResourceStack } from "../lib/resource-stack";
+import "source-map-support/register";
 import { DrSampleAcceleratorStack } from "../lib/accelerator-stack";
+import { DrSampleResourceStack } from "../lib/resource-stack";
 
-// Get parameters from context
 const app = new App();
+
+// Get context
 const owner = app.node.tryGetContext("owner");
 const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
 
-// Deploy main stack
+// Deploy tokyo stack
 const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -23,10 +24,12 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", 
   azC: "ap-northeast-1c",
   area: "tokyo",
   hostedZoneName: hostedZoneName,
+  globalDomainName: `${serviceName}-${hostedZoneName}`,
+  regionalDomainName: `${serviceName}-tokyo-${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-ap-northeast-1.sh",
 });
 
-// Deploy DR stack
+// Deploy osaka stack
 const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -39,6 +42,8 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
   azC: "ap-northeast-3c",
   area: "osaka",
   hostedZoneName: hostedZoneName,
+  globalDomainName: `${serviceName}-${hostedZoneName}`,
+  regionalDomainName: `${serviceName}-osaka-${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-ap-northeast-3.sh",
 });
 
@@ -52,6 +57,7 @@ const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
   crossRegionReferences: true,
   serviceName: serviceName,
   hostedZoneName: hostedZoneName,
+  globalDomainName: `${serviceName}-${hostedZoneName}`,
   alb1: tokyoStack.alb,
   alb2: osakaStack.alb,
 });

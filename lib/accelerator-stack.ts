@@ -9,6 +9,7 @@ import { Construct } from "constructs";
 export interface DrSampleAcceleratorStackProps extends StackProps {
   serviceName: string;
   hostedZoneName: string;
+  globalDomainName: string;
   alb1: ApplicationLoadBalancer;
   alb2: ApplicationLoadBalancer;
 }
@@ -17,10 +18,7 @@ export class DrSampleAcceleratorStack extends Stack {
   constructor(scope: Construct, id: string, props: DrSampleAcceleratorStackProps) {
     super(scope, id, props);
 
-    const { serviceName, hostedZoneName, alb1, alb2 } = props;
-
-    // Domain name
-    const globalDomainName = `${serviceName}.${hostedZoneName}`;
+    const { serviceName, hostedZoneName, globalDomainName, alb1, alb2 } = props;
 
     // Hosted zone
     const hostedZone = HostedZone.fromLookup(this, "HostedZone", {

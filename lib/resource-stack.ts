@@ -28,10 +28,12 @@ import { readFileSync } from "fs";
 
 export interface DrSampleResourceStackProps extends StackProps {
   serviceName: string;
-  area: String;
+  area: string;
   azA: string;
   azC: string;
   hostedZoneName: string;
+  globalDomainName: string;
+  regionalDomainName: string;
   userDataFilePath: string;
 }
 
@@ -41,11 +43,8 @@ export class DrSampleResourceStack extends Stack {
   constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
 
-    const { serviceName, area, azA, azC, hostedZoneName, userDataFilePath } = props;
-
-    // Domain name
-    const globalDomainName = `${serviceName}.${hostedZoneName}`;
-    const regionalDomainName = `${serviceName}-${area}.${hostedZoneName}`;
+    const { serviceName, area, azA, azC, hostedZoneName, globalDomainName, regionalDomainName, userDataFilePath } =
+      props;
 
     // Hosted zone
     const hostedZone = HostedZone.fromLookup(this, "HostedZone", {
