@@ -75,11 +75,12 @@ export class DrSampleResourceStack extends Stack {
           subnetType: SubnetType.PRIVATE_WITH_EGRESS,
           cidrMask: 24,
         },
-        {
-          name: "Isolated",
-          subnetType: SubnetType.PRIVATE_ISOLATED,
-          cidrMask: 24,
-        },
+        // This sample does not create databases
+        //{
+        //  name: "Isolated",
+        //  subnetType: SubnetType.PRIVATE_ISOLATED,
+        //  cidrMask: 24,
+        //},
       ],
     });
 
