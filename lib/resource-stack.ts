@@ -95,7 +95,7 @@ export class DrSampleResourceStack extends Stack {
     // EC2 instance role (currently not in use)
     const ec2Role = new Role(this, "IAMEC2InstanceRole", {
       roleName: `${serviceName}-${area}-instance-role`,
-      assumedBy: new ServicePrincipal("amazonaws.com"),
+      assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
       managedPolicies: [
         ManagedPolicy.fromManagedPolicyArn(this, "SSMAccess", "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"),
       ],
