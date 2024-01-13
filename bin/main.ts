@@ -6,6 +6,7 @@ import { DrSampleAcceleratorStack } from "../lib/accelerator-stack";
 
 // Get parameters from context
 const app = new App();
+const owner = app.node.tryGetContext("owner");
 const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
 
@@ -60,4 +61,4 @@ gaStack.addDependency(tokyoStack);
 gaStack.addDependency(osakaStack);
 
 // Tagging all resources
-Tags.of(app).add("Owner", "kawashima");
+Tags.of(app).add("Owner", owner);
