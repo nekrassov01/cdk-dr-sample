@@ -45,7 +45,7 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
 const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: "ap-northeast-1",
+    region: process.env.CDK_DEFAULT_REGION,
   },
   terminationProtection: false,
   crossRegionReferences: true,
