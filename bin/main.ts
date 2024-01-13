@@ -24,8 +24,8 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", 
   azSecondary: "ap-northeast-1c",
   area: "tokyo",
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}-${hostedZoneName}`,
-  regionalDomainName: `${serviceName}-tokyo-${hostedZoneName}`,
+  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  regionalDomainName: `${serviceName}-tokyo.${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-ap-northeast-1.sh",
 });
 
@@ -42,8 +42,8 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
   azSecondary: "ap-northeast-3c",
   area: "osaka",
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}-${hostedZoneName}`,
-  regionalDomainName: `${serviceName}-osaka-${hostedZoneName}`,
+  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  regionalDomainName: `${serviceName}-osaka.${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-ap-northeast-3.sh",
 });
 
@@ -57,7 +57,7 @@ const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
   crossRegionReferences: true,
   serviceName: serviceName,
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}-${hostedZoneName}`,
+  globalDomainName: `${serviceName}.${hostedZoneName}`,
   alb1: tokyoStack.alb,
   alb2: osakaStack.alb,
 });
