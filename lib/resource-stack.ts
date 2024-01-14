@@ -156,7 +156,7 @@ export class DrSampleResourceStack extends Stack {
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
-      availabilityZone: azPrimary,
+      availabilityZone: azSecondary,
       securityGroup: ec2SecurityGroup,
       role: ec2Role,
       userData: userData,
