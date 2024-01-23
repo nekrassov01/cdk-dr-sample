@@ -33,7 +33,7 @@ import {
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { AlbTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { CfnInstanceProfile, ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { HostedZone } from "aws-cdk-lib/aws-route53";
+import { CfnHealthCheck, CfnRecordSet, HostedZone, RecordType } from "aws-cdk-lib/aws-route53";
 import { Construct } from "constructs";
 import { readFileSync } from "fs";
 
@@ -45,15 +45,23 @@ export interface DrSampleResourceStackProps extends StackProps {
   hostedZoneName: string;
   globalDomainName: string;
   userDataFilePath: string;
+  failoverType: string;
 }
 
 export class DrSampleResourceStack extends Stack {
-  public readonly nlb: NetworkLoadBalancer;
-
   constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
 
-    const { serviceName, area, azPrimary, azSecondary, hostedZoneName, globalDomainName, userDataFilePath } = props;
+    const {
+      serviceName,
+      area,
+      azPrimary,
+      azSecondary,
+      hostedZoneName,
+      globalDomainName,
+      userDataFilePath,
+      failoverType,
+    } = props;
 
     // Hosted zone
     const hostedZone = HostedZone.fromLookup(this, "Route53HostedZone", {
@@ -260,6 +268,7 @@ export class DrSampleResourceStack extends Stack {
       vpc: vpc,
       vpcSubnets: vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }),
       internetFacing: true,
+      crossZoneEnabled: true,
     });
     nlb.node.addDependency(alb);
 
@@ -293,7 +302,7 @@ export class DrSampleResourceStack extends Stack {
           preserveClientIp: true,
           healthCheck: {
             protocol: Protocol.HTTP,
-            port: "traffic-port",
+            port: "80",
           },
           vpc: vpc,
         }),
@@ -312,6 +321,7 @@ export class DrSampleResourceStack extends Stack {
           protocol: Protocol.TCP,
           port: 80,
           preserveClientIp: true,
+
           healthCheck: {
             protocol: Protocol.HTTP,
             port: "traffic-port",
@@ -321,7 +331,40 @@ export class DrSampleResourceStack extends Stack {
       ],
     });
 
-    // Add NLB to props
-    this.nlb = nlb;
+    // Route53 health check
+    const dnsHealthCheck = new CfnHealthCheck(this, "Route53HealthCheck", {
+      healthCheckConfig: {
+        type: "HTTP",
+        fullyQualifiedDomainName: nlb.loadBalancerDnsName,
+        port: 80,
+        resourcePath: "/",
+        requestInterval: 10,
+        failureThreshold: 3,
+        measureLatency: false,
+      },
+      healthCheckTags: [
+        {
+          key: "Name",
+          value: `${serviceName}-${area}-healthcheck`,
+        },
+      ],
+    });
+    dnsHealthCheck.node.addDependency(nlb);
+
+    // A record for DNS failover
+    const nlbARecord = new CfnRecordSet(this, "Route53RecordSet", {
+      name: globalDomainName,
+      type: RecordType.A,
+      aliasTarget: {
+        dnsName: nlb.loadBalancerDnsName,
+        hostedZoneId: nlb.loadBalancerCanonicalHostedZoneId,
+        evaluateTargetHealth: true,
+      },
+      failover: failoverType,
+      healthCheckId: dnsHealthCheck.attrHealthCheckId,
+      hostedZoneId: hostedZone.hostedZoneId,
+      setIdentifier: `${serviceName}-${area}-id`,
+    });
+    nlbARecord.node.addDependency(dnsHealthCheck);
   }
 }

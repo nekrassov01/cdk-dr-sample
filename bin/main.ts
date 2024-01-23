@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
-import { DrSampleDNSStack } from "../lib/dns-stack";
 import { DrSampleResourceStack } from "../lib/resource-stack";
 
 const app = new App();
@@ -12,7 +11,7 @@ const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
 
 // Deploy tokyo stack
-const tokyoStack = new DrSampleResourceStack(app, "DrSampleNLBStackTokyo", {
+new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-1",
@@ -26,10 +25,11 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleNLBStackTokyo", {
   hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-tokyo.sh",
+  failoverType: "PRIMARY",
 });
 
 // Deploy osaka stack
-const osakaStack = new DrSampleResourceStack(app, "DrSampleNLBStackOsaka", {
+new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-3",
@@ -43,24 +43,8 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleNLBStackOsaka", {
   hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
   userDataFilePath: "./src/ec2/userdata-osaka.sh",
+  failoverType: "SECONDARY",
 });
-
-// DNS
-const dnsStack = new DrSampleDNSStack(app, "DrSampleDNSStack", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-  terminationProtection: false,
-  crossRegionReferences: true,
-  hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
-  nlb: tokyoStack.nlb,
-});
-
-// Add dependency
-dnsStack.addDependency(tokyoStack);
-dnsStack.addDependency(osakaStack);
 
 // Tagging all resources
 Tags.of(app).add("Owner", owner);
