@@ -187,7 +187,7 @@ export class DrSampleResourceStack extends Stack {
       ],
       defaultTargetGroups: [
         new ApplicationTargetGroup(this, "TargetGroup", {
-          targetGroupName: `${serviceName}-${area}-tg`,
+          targetGroupName: `${serviceName}-${area}-alb-tg`,
           targetType: TargetType.INSTANCE,
           targets: [asg],
           protocol: ApplicationProtocol.HTTP,
