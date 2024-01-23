@@ -1,4 +1,4 @@
-import { RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { ApplicationLoadBalancer } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { Accelerator, ClientAffinity, ConnectionProtocol, IpAddressType } from "aws-cdk-lib/aws-globalaccelerator";
 import { ApplicationLoadBalancerEndpoint } from "aws-cdk-lib/aws-globalaccelerator-endpoints";
@@ -46,22 +46,24 @@ export class DrSampleAcceleratorStack extends Stack {
     listener.addEndpointGroup("GlobalAcceleratorEndpointGroup1", {
       endpoints: [
         new ApplicationLoadBalancerEndpoint(alb1, {
-          weight: 128,
+          weight: 255,
           preserveClientIp: true,
         }),
       ],
       trafficDialPercentage: 100,
+      healthCheckInterval: Duration.seconds(10),
     });
 
     // Endpoint group for ALB 2
     listener.addEndpointGroup("GlobalAcceleratorEndpointGroup2", {
       endpoints: [
         new ApplicationLoadBalancerEndpoint(alb2, {
-          weight: 128,
+          weight: 0,
           preserveClientIp: true,
         }),
       ],
-      trafficDialPercentage: 0,
+      trafficDialPercentage: 100,
+      healthCheckInterval: Duration.seconds(10),
     });
 
     // Alias record for Global Accelerator
