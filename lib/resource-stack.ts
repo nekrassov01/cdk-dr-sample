@@ -200,7 +200,6 @@ export class DrSampleResourceStack extends Stack {
         }),
       ],
     });
-    alb.node.addDependency(asg);
 
     // EC2 Instance Connect endpoint SecurityGroup
     const eicSecurityGroupName = `${serviceName}-${area}-eic-security-group`;
