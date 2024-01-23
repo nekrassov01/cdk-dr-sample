@@ -1,8 +1,9 @@
-import { Duration, Stack, StackProps } from "aws-cdk-lib";
+import { Duration, Stack, StackProps, Token } from "aws-cdk-lib";
 import { AutoScalingGroup, BlockDeviceVolume, EbsDeviceVolumeType, HealthCheck } from "aws-cdk-lib/aws-autoscaling";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AmazonLinuxCpuType,
+  CfnEIP,
   CfnInstanceConnectEndpoint,
   CpuCredits,
   InstanceClass,
@@ -22,10 +23,15 @@ import {
   ApplicationLoadBalancer,
   ApplicationProtocol,
   ApplicationTargetGroup,
+  CfnLoadBalancer,
+  ListenerAction,
+  NetworkLoadBalancer,
+  NetworkTargetGroup,
   Protocol,
   SslPolicy,
   TargetType,
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { AlbTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
 import { CfnInstanceProfile, ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { Construct } from "constructs";
@@ -42,7 +48,7 @@ export interface DrSampleResourceStackProps extends StackProps {
 }
 
 export class DrSampleResourceStack extends Stack {
-  public readonly alb: ApplicationLoadBalancer;
+  public readonly nlb: NetworkLoadBalancer;
 
   constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
@@ -174,10 +180,16 @@ export class DrSampleResourceStack extends Stack {
       "Allow access to ALB from anyone on port 443",
       false
     );
+    albSecurityGroup.addIngressRule(
+      Peer.ipv4("0.0.0.0/0"),
+      Port.tcp(80),
+      "Allow access to ALB from anyone on port 80",
+      false
+    );
     asg.connections.allowFrom(alb, Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
 
     // ALB HTTPS listener
-    alb.addListener("Listener", {
+    alb.addListener("ALBListenerHTTPS", {
       protocol: ApplicationProtocol.HTTPS,
       sslPolicy: SslPolicy.TLS13_13,
       certificates: [
@@ -186,21 +198,33 @@ export class DrSampleResourceStack extends Stack {
         },
       ],
       defaultTargetGroups: [
-        new ApplicationTargetGroup(this, "TargetGroup", {
-          targetGroupName: `${serviceName}-${area}-tg`,
+        new ApplicationTargetGroup(this, "ALBTargetGroup", {
+          targetGroupName: `${serviceName}-${area}-alb-tg`,
           targetType: TargetType.INSTANCE,
           targets: [asg],
           protocol: ApplicationProtocol.HTTP,
           port: 80,
           healthCheck: {
             protocol: Protocol.HTTP,
-            port: "80",
+            port: "traffic-port",
           },
           vpc: vpc,
         }),
       ],
     });
-    alb.node.addDependency(asg);
+
+    // ALB HTTP listener
+    alb.addListener("ALBListenerHTTP", {
+      protocol: ApplicationProtocol.HTTP,
+      defaultAction: ListenerAction.redirect({
+        protocol: "HTTPS",
+        port: "443",
+        host: "#{host}",
+        path: "/#{path}",
+        query: "#{query}",
+        permanent: true,
+      }),
+    });
 
     // EC2 Instance Connect endpoint SecurityGroup
     const eicSecurityGroupName = `${serviceName}-${area}-eic-security-group`;
@@ -230,7 +254,74 @@ export class DrSampleResourceStack extends Stack {
       false
     );
 
-    // Add ALB to props
-    this.alb = alb;
+    // NLB
+    const nlb = new NetworkLoadBalancer(this, "NLB", {
+      loadBalancerName: `${serviceName}-${area}-nlb`,
+      vpc: vpc,
+      vpcSubnets: vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }),
+      internetFacing: true,
+    });
+    nlb.node.addDependency(alb);
+
+    // Allocate EIPs for NLB
+    const cfnLoadBalancer = nlb.node.defaultChild as CfnLoadBalancer;
+    cfnLoadBalancer.subnetMappings = vpc.publicSubnets.map((subnet, i) => {
+      const eip = new CfnEIP(this, `NLBEIP${i}`, {
+        domain: "vpc",
+      });
+      nlb.node.addDependency(eip);
+      return {
+        subnetId: subnet.subnetId,
+        allocationId: Token.asString(eip.getAtt("AllocationId")),
+      } as CfnLoadBalancer.SubnetMappingProperty;
+    });
+    if (cfnLoadBalancer.subnetMappings !== undefined) {
+      cfnLoadBalancer.subnets = undefined;
+    }
+
+    // NLB TCP443 listerner
+    nlb.addListener("NLBListenerTCP443", {
+      protocol: Protocol.TCP,
+      port: 443,
+      defaultTargetGroups: [
+        new NetworkTargetGroup(this, "NLBTargetGroupTCP443", {
+          targetGroupName: `${serviceName}-${area}-nlb443-tg`,
+          targetType: TargetType.ALB,
+          targets: [new AlbTarget(alb, 443)],
+          protocol: Protocol.TCP,
+          port: 443,
+          preserveClientIp: true,
+          healthCheck: {
+            protocol: Protocol.HTTP,
+            port: "traffic-port",
+          },
+          vpc: vpc,
+        }),
+      ],
+    });
+
+    // NLB TCP80 listerner
+    nlb.addListener("NLBListenerTCP80", {
+      protocol: Protocol.TCP,
+      port: 80,
+      defaultTargetGroups: [
+        new NetworkTargetGroup(this, "NLBTargetGroupTCP80", {
+          targetGroupName: `${serviceName}-${area}-nlb80-tg`,
+          targetType: TargetType.ALB,
+          targets: [new AlbTarget(alb, 80)],
+          protocol: Protocol.TCP,
+          port: 80,
+          preserveClientIp: true,
+          healthCheck: {
+            protocol: Protocol.HTTP,
+            port: "traffic-port",
+          },
+          vpc: vpc,
+        }),
+      ],
+    });
+
+    // Add NLB to props
+    this.nlb = nlb;
   }
 }

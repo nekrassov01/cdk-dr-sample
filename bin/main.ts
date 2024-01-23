@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
-import { DrSampleAcceleratorStack } from "../lib/accelerator-stack";
+import { DrSampleDNSStack } from "../lib/dns-stack";
 import { DrSampleResourceStack } from "../lib/resource-stack";
 
 const app = new App();
@@ -12,7 +12,7 @@ const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
 
 // Deploy tokyo stack
-const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
+const tokyoStack = new DrSampleResourceStack(app, "DrSampleNLBStackTokyo", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-1",
@@ -29,7 +29,7 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", 
 });
 
 // Deploy osaka stack
-const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
+const osakaStack = new DrSampleResourceStack(app, "DrSampleNLBStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-3",
@@ -45,24 +45,22 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
   userDataFilePath: "./src/ec2/userdata-osaka.sh",
 });
 
-// Global Accelerator
-const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
+// DNS
+const dnsStack = new DrSampleDNSStack(app, "DrSampleDNSStack", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
   terminationProtection: false,
   crossRegionReferences: true,
-  serviceName: serviceName,
   hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
-  alb1: tokyoStack.alb,
-  alb2: osakaStack.alb,
+  nlb: tokyoStack.nlb,
 });
 
 // Add dependency
-gaStack.addDependency(tokyoStack);
-gaStack.addDependency(osakaStack);
+dnsStack.addDependency(tokyoStack);
+dnsStack.addDependency(osakaStack);
 
 // Tagging all resources
 Tags.of(app).add("Owner", owner);
