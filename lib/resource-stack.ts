@@ -294,7 +294,7 @@ export class DrSampleResourceStack extends Stack {
       port: 443,
       defaultTargetGroups: [
         new NetworkTargetGroup(this, "NLBTargetGroupTCP443", {
-          targetGroupName: `${serviceName}-${area}-nlb443-tg`,
+          targetGroupName: `${serviceName}-${area}-nlb-tg-443`,
           targetType: TargetType.ALB,
           targets: [new AlbTarget(alb, 443)],
           protocol: Protocol.TCP,
@@ -315,7 +315,7 @@ export class DrSampleResourceStack extends Stack {
       port: 80,
       defaultTargetGroups: [
         new NetworkTargetGroup(this, "NLBTargetGroupTCP80", {
-          targetGroupName: `${serviceName}-${area}-nlb80-tg`,
+          targetGroupName: `${serviceName}-${area}-nlb-tg-80`,
           targetType: TargetType.ALB,
           targets: [new AlbTarget(alb, 80)],
           protocol: Protocol.TCP,
