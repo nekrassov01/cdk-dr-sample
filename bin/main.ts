@@ -25,8 +25,7 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", 
   area: "tokyo",
   hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
-  regionalDomainName: `${serviceName}-tokyo.${hostedZoneName}`,
-  userDataFilePath: "./src/ec2/userdata-ap-northeast-1.sh",
+  userDataFilePath: "./src/ec2/userdata-tokyo.sh",
 });
 
 // Deploy osaka stack
@@ -43,8 +42,7 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
   area: "osaka",
   hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
-  regionalDomainName: `${serviceName}-osaka.${hostedZoneName}`,
-  userDataFilePath: "./src/ec2/userdata-ap-northeast-3.sh",
+  userDataFilePath: "./src/ec2/userdata-osaka.sh",
 });
 
 // Global Accelerator

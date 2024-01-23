@@ -1,15 +1,15 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { Duration, Stack, StackProps } from "aws-cdk-lib";
+import { AutoScalingGroup, BlockDeviceVolume, EbsDeviceVolumeType, HealthCheck } from "aws-cdk-lib/aws-autoscaling";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import {
   AmazonLinuxCpuType,
-  BlockDeviceVolume,
   CfnInstanceConnectEndpoint,
-  EbsDeviceVolumeType,
-  Instance,
+  CpuCredits,
   InstanceClass,
   InstanceSize,
   InstanceType,
   IpAddresses,
+  LaunchTemplate,
   MachineImage,
   Peer,
   Port,
@@ -18,11 +18,16 @@ import {
   UserData,
   Vpc,
 } from "aws-cdk-lib/aws-ec2";
-import { ApplicationLoadBalancer, ApplicationProtocol, SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { InstanceTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2-targets";
+import {
+  ApplicationLoadBalancer,
+  ApplicationProtocol,
+  ApplicationTargetGroup,
+  Protocol,
+  SslPolicy,
+  TargetType,
+} from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { CfnInstanceProfile, ManagedPolicy, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
-import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
+import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { Construct } from "constructs";
 import { readFileSync } from "fs";
 
@@ -33,7 +38,6 @@ export interface DrSampleResourceStackProps extends StackProps {
   azSecondary: string;
   hostedZoneName: string;
   globalDomainName: string;
-  regionalDomainName: string;
   userDataFilePath: string;
 }
 
@@ -43,16 +47,7 @@ export class DrSampleResourceStack extends Stack {
   constructor(scope: Construct, id: string, props: DrSampleResourceStackProps) {
     super(scope, id, props);
 
-    const {
-      serviceName,
-      area,
-      azPrimary,
-      azSecondary,
-      hostedZoneName,
-      globalDomainName,
-      regionalDomainName,
-      userDataFilePath,
-    } = props;
+    const { serviceName, area, azPrimary, azSecondary, hostedZoneName, globalDomainName, userDataFilePath } = props;
 
     // Hosted zone
     const hostedZone = HostedZone.fromLookup(this, "Route53HostedZone", {
@@ -62,8 +57,8 @@ export class DrSampleResourceStack extends Stack {
     // Certificate
     const certificate = new Certificate(this, "ACMCertificate", {
       certificateName: `${serviceName}-${area}-certificate`,
-      domainName: regionalDomainName,
-      subjectAlternativeNames: ["*." + regionalDomainName, globalDomainName, "*." + globalDomainName],
+      domainName: globalDomainName,
+      subjectAlternativeNames: [globalDomainName, "*." + globalDomainName],
       validation: CertificateValidation.fromDns(hostedZone),
     });
 
@@ -114,52 +109,45 @@ export class DrSampleResourceStack extends Stack {
       allowAllOutbound: true,
     });
 
-    // EC2 settings
-    const ec2BlockDevices = [
-      {
-        deviceName: "/dev/xvda",
-        volume: BlockDeviceVolume.ebs(8, {
-          volumeType: EbsDeviceVolumeType.GP3,
-        }),
-      },
-    ];
+    // EC2 UserData
     const userData = UserData.forLinux({ shebang: "#!/bin/bash" });
     userData.addCommands(readFileSync(userDataFilePath, "utf8"));
 
-    // EC2 instances
-    const ec2Instance1 = new Instance(this, "EC2Instance1", {
-      instanceName: `${serviceName}-${area}-instance-1`,
-      instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+    // EC2 LaunchTemplate
+    const launchTemplate = new LaunchTemplate(this, "EC2LaunchTemplate", {
+      launchTemplateName: `${serviceName}-${area}-template`,
+      instanceType: InstanceType.of(InstanceClass.T3, InstanceSize.MICRO),
+      cpuCredits: CpuCredits.STANDARD,
       machineImage: MachineImage.latestAmazonLinux2({
         cpuType: AmazonLinuxCpuType.X86_64,
       }),
-      blockDevices: ec2BlockDevices,
-      propagateTagsToVolumeOnCreation: true,
-      vpc,
-      vpcSubnets: {
-        subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-      },
-      availabilityZone: azPrimary,
+      blockDevices: [
+        {
+          deviceName: "/dev/xvda",
+          volume: BlockDeviceVolume.ebs(8, {
+            volumeType: EbsDeviceVolumeType.GP3,
+          }),
+        },
+      ],
       securityGroup: ec2SecurityGroup,
       role: ec2Role,
+      requireImdsv2: true,
       userData: userData,
     });
-    const ec2Instance2 = new Instance(this, "EC2Instance2", {
-      instanceName: `${serviceName}-${area}-instance-2`,
-      instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
-      machineImage: MachineImage.latestAmazonLinux2({
-        cpuType: AmazonLinuxCpuType.X86_64,
-      }),
-      blockDevices: ec2BlockDevices,
-      propagateTagsToVolumeOnCreation: true,
+
+    // AutoScalingGroup
+    const asg = new AutoScalingGroup(this, "AutoScalingGroup", {
+      autoScalingGroupName: `${serviceName}-${area}-instance`,
+      launchTemplate: launchTemplate,
+      minCapacity: 2,
+      maxCapacity: 2,
       vpc,
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
-      availabilityZone: azSecondary,
-      securityGroup: ec2SecurityGroup,
-      role: ec2Role,
-      userData: userData,
+      healthCheck: HealthCheck.elb({
+        grace: Duration.minutes(10),
+      }),
     });
 
     // ALB security group
@@ -176,22 +164,20 @@ export class DrSampleResourceStack extends Stack {
       loadBalancerName: `${serviceName}-${area}-alb`,
       vpc: vpc,
       vpcSubnets: vpc.selectSubnets({ subnetType: SubnetType.PUBLIC }),
-      internetFacing: true,
+      internetFacing: false,
       securityGroup: albSecurityGroup,
     });
-    alb.node.addDependency(ec2Instance1);
-    alb.node.addDependency(ec2Instance2);
+    alb.node.addDependency(asg);
     albSecurityGroup.addIngressRule(
       Peer.ipv4("0.0.0.0/0"),
       Port.tcp(443),
       "Allow access to ALB from anyone on port 443",
       false
     );
-    ec2Instance1.connections.allowFrom(alb, Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
-    ec2Instance2.connections.allowFrom(alb, Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
+    asg.connections.allowFrom(alb, Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
 
     // ALB HTTPS listener
-    const albListener = alb.addListener("ALBListener", {
+    alb.addListener("Listener", {
       protocol: ApplicationProtocol.HTTPS,
       sslPolicy: SslPolicy.TLS13_13,
       certificates: [
@@ -199,14 +185,22 @@ export class DrSampleResourceStack extends Stack {
           certificateArn: certificate.certificateArn,
         },
       ],
+      defaultTargetGroups: [
+        new ApplicationTargetGroup(this, "TargetGroup", {
+          targetGroupName: `${serviceName}-${area}-tg`,
+          targetType: TargetType.INSTANCE,
+          targets: [asg],
+          protocol: ApplicationProtocol.HTTP,
+          port: 80,
+          healthCheck: {
+            protocol: Protocol.HTTP,
+            port: "80",
+          },
+          vpc: vpc,
+        }),
+      ],
     });
-    albListener.addTargets("ALBTargetGroup", {
-      targetGroupName: `${serviceName}-${area}-tg`,
-      targets: [new InstanceTarget(ec2Instance1, 80), new InstanceTarget(ec2Instance2, 80)],
-      protocol: ApplicationProtocol.HTTP,
-    });
-    alb.node.addDependency(ec2Instance1);
-    alb.node.addDependency(ec2Instance2);
+    alb.node.addDependency(asg);
 
     // EC2 Instance Connect endpoint SecurityGroup
     const eicSecurityGroupName = `${serviceName}-${area}-eic-security-group`;
@@ -217,12 +211,7 @@ export class DrSampleResourceStack extends Stack {
       allowAllOutbound: false,
     });
     eicSecurityGroup.connections.allowTo(
-      ec2Instance1,
-      Port.tcp(22),
-      "Allow access to EC2 instance from EC2 Instance Connect on port 22"
-    );
-    eicSecurityGroup.connections.allowTo(
-      ec2Instance2,
+      asg,
       Port.tcp(22),
       "Allow access to EC2 instance from EC2 Instance Connect on port 22"
     );
@@ -240,14 +229,6 @@ export class DrSampleResourceStack extends Stack {
       "Allow access to EC2 instance from EC2 Instance Connect on port 22",
       false
     );
-
-    // Alias record for ALB
-    const albARecord = new ARecord(this, "Route53ALBARecord", {
-      recordName: regionalDomainName,
-      target: RecordTarget.fromAlias(new LoadBalancerTarget(alb)),
-      zone: hostedZone,
-    });
-    albARecord.node.addDependency(alb);
 
     // Add ALB to props
     this.alb = alb;
