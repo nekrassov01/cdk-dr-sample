@@ -79,7 +79,8 @@ export class Database extends Construct {
     });
 
     // Database monitoring role
-    const monitoringRole = new cdk.aws_iam.Role(this, "MonitoringRole", {
+    const monitoringRole = new cdk.aws_iam.Role(this, "DBMonitoringRole", {
+      roleName: `${props.serviceName}-${props.area}-db-monitoring-role`,
       assumedBy: new cdk.aws_iam.ServicePrincipal("monitoring.rds.amazonaws.com"),
       managedPolicies: [
         cdk.aws_iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonRDSEnhancedMonitoringRole"),
