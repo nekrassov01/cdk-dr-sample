@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
-import { DrSampleResourceStack } from "../lib/resource-stack";
+import { DrSampleStack } from "../lib/stack";
 
 const app = new App();
 
@@ -9,9 +9,11 @@ const app = new App();
 const owner = app.node.tryGetContext("owner");
 const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
+const globalDomainName = `${serviceName}.${hostedZoneName}`;
+const globalDatabaseIdentifier = `${serviceName}-global-database`;
 
 // Deploy tokyo stack
-new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
+new DrSampleStack(app, "DrSampleStackTokyo", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-1",
@@ -19,17 +21,19 @@ new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
+  area: "tokyo",
   azPrimary: "ap-northeast-1a",
   azSecondary: "ap-northeast-1c",
-  area: "tokyo",
+  globalDatabaseIdentifier: globalDatabaseIdentifier,
+  isPrimaryDatabaseCluster: true,
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  globalDomainName: globalDomainName,
   userDataFilePath: "./src/ec2/userdata-tokyo.sh",
   failoverType: "PRIMARY",
 });
 
 // Deploy osaka stack
-new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
+new DrSampleStack(app, "DrSampleStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-3",
@@ -37,11 +41,13 @@ new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
+  area: "osaka",
   azPrimary: "ap-northeast-3a",
   azSecondary: "ap-northeast-3c",
-  area: "osaka",
+  globalDatabaseIdentifier: globalDatabaseIdentifier,
+  isPrimaryDatabaseCluster: false,
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  globalDomainName: globalDomainName,
   userDataFilePath: "./src/ec2/userdata-osaka.sh",
   failoverType: "SECONDARY",
 });
