@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
-import { DrSampleAcceleratorStack } from "../lib/accelerator-stack";
-import { DrSampleResourceStack } from "../lib/resource-stack";
+import { DrSampleGlobalStack } from "../lib/global-stack";
+import { DrSampleRegionalStack } from "../lib/regional-stack";
 
 const app = new App();
 
@@ -10,9 +10,11 @@ const app = new App();
 const owner = app.node.tryGetContext("owner");
 const serviceName = app.node.tryGetContext("serviceName");
 const hostedZoneName = app.node.tryGetContext("hostedZoneName");
+const globalDomainName = `${serviceName}.${hostedZoneName}`;
+const globalDatabaseIdentifier = `${serviceName}-global-database`;
 
 // Deploy tokyo stack
-const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", {
+const tokyoStack = new DrSampleRegionalStack(app, "DrSampleRegionalStackTokyo", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-1",
@@ -20,16 +22,18 @@ const tokyoStack = new DrSampleResourceStack(app, "DrSampleResourceStackTokyo", 
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
+  area: "tokyo",
   azPrimary: "ap-northeast-1a",
   azSecondary: "ap-northeast-1c",
-  area: "tokyo",
+  globalDatabaseIdentifier: globalDatabaseIdentifier,
+  isPrimaryDatabaseCluster: true,
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  globalDomainName: globalDomainName,
   userDataFilePath: "./src/ec2/userdata-tokyo.sh",
 });
 
 // Deploy osaka stack
-const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", {
+const osakaStack = new DrSampleRegionalStack(app, "DrSampleRegionalStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-3",
@@ -37,16 +41,18 @@ const osakaStack = new DrSampleResourceStack(app, "DrSampleResourceStackOsaka", 
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
+  area: "osaka",
   azPrimary: "ap-northeast-3a",
   azSecondary: "ap-northeast-3c",
-  area: "osaka",
+  globalDatabaseIdentifier: globalDatabaseIdentifier,
+  isPrimaryDatabaseCluster: false,
   hostedZoneName: hostedZoneName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  globalDomainName: globalDomainName,
   userDataFilePath: "./src/ec2/userdata-osaka.sh",
 });
 
 // Global Accelerator
-const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
+const gaStack = new DrSampleGlobalStack(app, "DrSampleGlobalStack", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
@@ -54,10 +60,10 @@ const gaStack = new DrSampleAcceleratorStack(app, "DrSampleAcceleratorStack", {
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
-  hostedZoneName: hostedZoneName,
   globalDomainName: `${serviceName}.${hostedZoneName}`,
-  alb1: tokyoStack.alb,
-  alb2: osakaStack.alb,
+  hostedZone: tokyoStack.hostedZone,
+  albPrimary: tokyoStack.alb,
+  albSecondary: osakaStack.alb,
 });
 
 // Add dependency
