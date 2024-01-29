@@ -17,7 +17,7 @@ export interface DrSampleRegionalStackProps extends StackProps {
   hostedZoneName: string;
   globalDomainName: string;
   userDataFilePath: string;
-  failoverType: string;
+  failoverType: "PRIMARY" | "SECONDARY";
 }
 
 export class DrSampleRegionalStack extends Stack {

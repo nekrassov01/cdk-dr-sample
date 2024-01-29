@@ -5,7 +5,7 @@ export interface DNSProps {
   serviceName: string;
   area: "tokyo" | "osaka";
   globalDomainName: string;
-  failoverType: string;
+  failoverType: "PRIMARY" | "SECONDARY";
   hostedZone: cdk.aws_route53.IHostedZone;
   nlb: cdk.aws_elasticloadbalancingv2.INetworkLoadBalancer;
 }
