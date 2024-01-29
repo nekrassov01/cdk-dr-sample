@@ -70,7 +70,7 @@ const tokyoPeeringStack = new DrSamplePeeringStack(app, "DrSamplePeeringStackTok
 });
 
 // Deploy stack for VPC peering osaka side
-new DrSamplePeeringStack(app, "DrSamplePeeringStackOsaka", {
+const osakaPeeringStack = new DrSamplePeeringStack(app, "DrSamplePeeringStackOsaka", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: "ap-northeast-3",
@@ -84,6 +84,10 @@ new DrSamplePeeringStack(app, "DrSamplePeeringStackOsaka", {
   peerRegion: osakaStack.region,
   connection: tokyoPeeringStack.connection,
 });
+
+// Add dependency
+tokyoPeeringStack.addDependency(tokyoStack);
+osakaPeeringStack.addDependency(osakaStack);
 
 // Tagging all resources
 Tags.of(app).add("Owner", owner);
