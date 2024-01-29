@@ -14,7 +14,7 @@ export class Accelerator extends Construct {
     super(scope, id);
 
     // Global Accelerator
-    const accelerator = new cdk.aws_globalaccelerator.Accelerator(this, "GlobalAccelerator", {
+    const accelerator = new cdk.aws_globalaccelerator.Accelerator(this, "Accelerator", {
       acceleratorName: `${props.serviceName}-accelerator`,
       enabled: true,
       ipAddressType: cdk.aws_globalaccelerator.IpAddressType.IPV4,
@@ -22,7 +22,7 @@ export class Accelerator extends Construct {
     accelerator.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
     // Listener
-    const listener = accelerator.addListener("GlobalAcceleratorListener", {
+    const listener = accelerator.addListener("Listener", {
       listenerName: `${props.serviceName}-accelerator-listener`,
       protocol: cdk.aws_globalaccelerator.ConnectionProtocol.TCP,
       portRanges: [{ fromPort: 443 }],
@@ -31,7 +31,7 @@ export class Accelerator extends Construct {
     listener.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
     // Endpoint group for ALB 1
-    listener.addEndpointGroup("GlobalAcceleratorEndpointGroup1", {
+    listener.addEndpointGroup("EndpointGroup1", {
       endpoints: [
         new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albPrimary, {
           weight: 128,
@@ -42,7 +42,7 @@ export class Accelerator extends Construct {
     });
 
     // Endpoint group for ALB 2
-    listener.addEndpointGroup("GlobalAcceleratorEndpointGroup2", {
+    listener.addEndpointGroup("EndpointGroup2", {
       endpoints: [
         new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albSecondary, {
           weight: 128,
@@ -53,7 +53,7 @@ export class Accelerator extends Construct {
     });
 
     // Alias record for Global Accelerator
-    const gaARecord = new cdk.aws_route53.ARecord(this, "Route53GlobalAcceleratorARecord", {
+    const gaARecord = new cdk.aws_route53.ARecord(this, "AcceleratorARecord", {
       recordName: props.globalDomainName,
       target: cdk.aws_route53.RecordTarget.fromAlias(new cdk.aws_route53_targets.GlobalAcceleratorTarget(accelerator)),
       zone: props.hostedZone,
