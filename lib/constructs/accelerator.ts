@@ -53,7 +53,7 @@ export class Accelerator extends Construct {
     });
 
     // Alias record for Global Accelerator
-    const gaARecord = new cdk.aws_route53.ARecord(this, "AcceleratorARecord", {
+    const gaARecord = new cdk.aws_route53.ARecord(this, "ARecord", {
       recordName: props.globalDomainName,
       target: cdk.aws_route53.RecordTarget.fromAlias(new cdk.aws_route53_targets.GlobalAcceleratorTarget(accelerator)),
       zone: props.hostedZone,

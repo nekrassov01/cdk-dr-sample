@@ -27,7 +27,7 @@ export class Service extends Construct {
     });
 
     // Certificate
-    const certificate = new cdk.aws_certificatemanager.Certificate(this, "ACMCertificate", {
+    const certificate = new cdk.aws_certificatemanager.Certificate(this, "Certificate", {
       certificateName: `${props.serviceName}-${props.area}-certificate`,
       domainName: props.globalDomainName,
       subjectAlternativeNames: [props.globalDomainName, "*." + props.globalDomainName],
