@@ -46,12 +46,15 @@ export class Network extends Construct {
     });
 
     this.publicSubnets = this.vpc.selectSubnets({
+      onePerAz: true,
       subnetType: cdk.aws_ec2.SubnetType.PUBLIC,
     });
     this.privateSubnets = this.vpc.selectSubnets({
+      onePerAz: true,
       subnetType: cdk.aws_ec2.SubnetType.PRIVATE_WITH_EGRESS,
     });
     this.isolatedSubnets = this.vpc.selectSubnets({
+      onePerAz: true,
       subnetType: cdk.aws_ec2.SubnetType.PRIVATE_ISOLATED,
     });
   }
