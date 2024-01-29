@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 
 export interface DatabaseProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
   globalDatabaseIdentifier: string;
   isPrimaryDatabaseCluster: boolean;
   vpc: cdk.aws_ec2.IVpc;

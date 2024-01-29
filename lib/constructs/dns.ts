@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 
 export interface DNSProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
   globalDomainName: string;
   failoverType: string;
   hostedZone: cdk.aws_route53.IHostedZone;

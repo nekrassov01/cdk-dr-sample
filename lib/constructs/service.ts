@@ -4,7 +4,7 @@ import { readFileSync } from "fs";
 
 export interface ServiceProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
   azPrimary: string;
   azSecondary: string;
   userDataFilePath: string;
@@ -33,7 +33,7 @@ export class Service extends Construct {
     });
 
     // Certificate
-    const certificate = new cdk.aws_certificatemanager.Certificate(this, "ACMCertificate", {
+    const certificate = new cdk.aws_certificatemanager.Certificate(this, "Certificate", {
       certificateName: `${props.serviceName}-${props.area}-certificate`,
       domainName: props.globalDomainName,
       subjectAlternativeNames: [props.globalDomainName, "*." + props.globalDomainName],
@@ -65,6 +65,7 @@ export class Service extends Construct {
       vpc: props.vpc,
       allowAllOutbound: true,
     });
+    cdk.Tags.of(ec2SecurityGroup).add("Name", ec2SecurityGroupName);
 
     // EC2 UserData
     const userData = cdk.aws_ec2.UserData.forLinux({ shebang: "#!/bin/bash" });
@@ -117,6 +118,7 @@ export class Service extends Construct {
       vpc: props.vpc,
       allowAllOutbound: false,
     });
+    cdk.Tags.of(albSecurityGroup).add("Name", albSecurityGroupName);
 
     // ALB
     const alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(this, "ALB", {
@@ -187,6 +189,7 @@ export class Service extends Construct {
       vpc: props.vpc,
       allowAllOutbound: false,
     });
+    cdk.Tags.of(eicSecurityGroup).add("Name", eicSecurityGroupName);
     eicSecurityGroup.connections.allowTo(
       asg,
       cdk.aws_ec2.Port.tcp(22),
@@ -220,7 +223,7 @@ export class Service extends Construct {
     // Allocate EIPs for NLB
     const cfnLoadBalancer = this.nlb.node.defaultChild as cdk.aws_elasticloadbalancingv2.CfnLoadBalancer;
     cfnLoadBalancer.subnetMappings = props.vpc.publicSubnets.map((subnet, i) => {
-      const eip = new cdk.aws_ec2.CfnEIP(this, `NLBEIP${i}`, {
+      const eip = new cdk.aws_ec2.CfnEIP(this, `NLBElasticIP${i}`, {
         domain: "vpc",
       });
       this.nlb.node.addDependency(eip);
@@ -266,7 +269,6 @@ export class Service extends Construct {
           protocol: cdk.aws_elasticloadbalancingv2.Protocol.TCP,
           port: 80,
           preserveClientIp: true,
-
           healthCheck: {
             protocol: cdk.aws_elasticloadbalancingv2.Protocol.HTTP,
             port: "traffic-port",

@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 export interface NetworkProps {
+  cidr: string;
   azPrimary: string;
   azSecondary: string;
 }
@@ -16,7 +17,7 @@ export class Network extends Construct {
     super(scope, id);
 
     this.vpc = new cdk.aws_ec2.Vpc(this, "VPC", {
-      ipAddresses: cdk.aws_ec2.IpAddresses.cidr("10.0.0.0/16"),
+      ipAddresses: cdk.aws_ec2.IpAddresses.cidr(props.cidr),
       enableDnsHostnames: true,
       enableDnsSupport: true,
       availabilityZones: [props.azPrimary, props.azSecondary],

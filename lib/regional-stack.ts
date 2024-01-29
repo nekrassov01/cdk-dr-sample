@@ -1,3 +1,4 @@
+import * as cdk from "aws-cdk-lib";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Database } from "./constructs/database";
@@ -5,9 +6,10 @@ import { DNS } from "./constructs/dns";
 import { Network } from "./constructs/network";
 import { Service } from "./constructs/service";
 
-export interface DrSampleStackProps extends StackProps {
+export interface DrSampleRegionalStackProps extends StackProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
+  cidr: string;
   azPrimary: string;
   azSecondary: string;
   globalDatabaseIdentifier: string;
@@ -18,12 +20,16 @@ export interface DrSampleStackProps extends StackProps {
   failoverType: string;
 }
 
-export class DrSampleStack extends Stack {
-  constructor(scope: Construct, id: string, props: DrSampleStackProps) {
+export class DrSampleRegionalStack extends Stack {
+  public readonly vpc: cdk.aws_ec2.IVpc;
+  public readonly region: string;
+
+  constructor(scope: Construct, id: string, props: DrSampleRegionalStackProps) {
     super(scope, id, props);
 
     // VPC-related resources
     const network = new Network(this, "Network", {
+      cidr: props.cidr,
       azPrimary: props.azPrimary,
       azSecondary: props.azSecondary,
     });
@@ -67,5 +73,9 @@ export class DrSampleStack extends Stack {
       failoverType: props.failoverType,
       nlb: service.nlb,
     });
+
+    // Add props
+    this.vpc = network.vpc;
+    this.region = this.region;
   }
 }
