@@ -4,7 +4,7 @@ import { readFileSync } from "fs";
 
 export interface ServiceProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
   userDataFilePath: string;
   hostedZoneName: string;
   globalDomainName: string;
@@ -129,6 +129,12 @@ export class Service extends Construct {
       "Allow access to ALB from anyone on port 443",
       false
     );
+    albSecurityGroup.addIngressRule(
+      cdk.aws_ec2.Peer.ipv4("0.0.0.0/0"),
+      cdk.aws_ec2.Port.tcp(80),
+      "Allow access to ALB from anyone on port 80",
+      false
+    );
     asg.connections.allowFrom(this.alb, cdk.aws_ec2.Port.tcp(80), "Allow access to EC2 instance from ALB on port 80");
 
     // ALB HTTPS listener
@@ -154,6 +160,19 @@ export class Service extends Construct {
           vpc: props.vpc,
         }),
       ],
+    });
+
+    // ALB HTTP listener
+    this.alb.addListener("ListenerHTTP", {
+      protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTP,
+      defaultAction: cdk.aws_elasticloadbalancingv2.ListenerAction.redirect({
+        protocol: "HTTPS",
+        port: "443",
+        host: "#{host}",
+        path: "/#{path}",
+        query: "#{query}",
+        permanent: true,
+      }),
     });
 
     // EC2 Instance Connect endpoint SecurityGroup

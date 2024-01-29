@@ -2,6 +2,7 @@
 import { App, Tags } from "aws-cdk-lib";
 import "source-map-support/register";
 import { DrSampleGlobalStack } from "../lib/global-stack";
+import { DrSamplePeeringStack } from "../lib/peering-stack";
 import { DrSampleRegionalStack } from "../lib/regional-stack";
 
 const app = new App();
@@ -23,6 +24,7 @@ const tokyoStack = new DrSampleRegionalStack(app, "DrSampleRegionalStackTokyo", 
   crossRegionReferences: true,
   serviceName: serviceName,
   area: "tokyo",
+  cidr: "10.0.0.0/16",
   azPrimary: "ap-northeast-1a",
   azSecondary: "ap-northeast-1c",
   globalDatabaseIdentifier: globalDatabaseIdentifier,
@@ -42,6 +44,7 @@ const osakaStack = new DrSampleRegionalStack(app, "DrSampleRegionalStackOsaka", 
   crossRegionReferences: true,
   serviceName: serviceName,
   area: "osaka",
+  cidr: "10.1.0.0/16",
   azPrimary: "ap-northeast-3a",
   azSecondary: "ap-northeast-3c",
   globalDatabaseIdentifier: globalDatabaseIdentifier,
@@ -49,6 +52,38 @@ const osakaStack = new DrSampleRegionalStack(app, "DrSampleRegionalStackOsaka", 
   hostedZoneName: hostedZoneName,
   globalDomainName: globalDomainName,
   userDataFilePath: "./src/ec2/userdata-osaka.sh",
+});
+
+// Deploy stack for VPC peering tokyo side
+const tokyoPeeringStack = new DrSamplePeeringStack(app, "DrSamplePeeringStackTokyo", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: "ap-northeast-1",
+  },
+  terminationProtection: false,
+  crossRegionReferences: true,
+  serviceName: serviceName,
+  area: "tokyo",
+  vpcPrimary: tokyoStack.vpc,
+  vpcSecondary: osakaStack.vpc,
+  peerRegion: osakaStack.region,
+  connection: undefined,
+});
+
+// Deploy stack for VPC peering osaka side
+const osakaPeeringStack = new DrSamplePeeringStack(app, "DrSamplePeeringStackOsaka", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: "ap-northeast-3",
+  },
+  terminationProtection: false,
+  crossRegionReferences: true,
+  serviceName: serviceName,
+  area: "osaka",
+  vpcPrimary: tokyoStack.vpc,
+  vpcSecondary: osakaStack.vpc,
+  peerRegion: osakaStack.region,
+  connection: tokyoPeeringStack.connection,
 });
 
 // Global Accelerator
@@ -67,6 +102,8 @@ const gaStack = new DrSampleGlobalStack(app, "DrSampleGlobalStack", {
 });
 
 // Add dependency
+tokyoPeeringStack.addDependency(tokyoStack);
+osakaPeeringStack.addDependency(osakaStack);
 gaStack.addDependency(tokyoStack);
 gaStack.addDependency(osakaStack);
 

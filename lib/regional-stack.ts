@@ -6,7 +6,8 @@ import { Service } from "./constructs/service";
 
 export interface DrSampleRegionalStackProps extends cdk.StackProps {
   serviceName: string;
-  area: string;
+  area: "tokyo" | "osaka";
+  cidr: string;
   azPrimary: string;
   azSecondary: string;
   globalDatabaseIdentifier: string;
@@ -17,6 +18,8 @@ export interface DrSampleRegionalStackProps extends cdk.StackProps {
 }
 
 export class DrSampleRegionalStack extends cdk.Stack {
+  public readonly vpc: cdk.aws_ec2.IVpc;
+  public readonly region: string;
   public readonly hostedZone: cdk.aws_route53.IHostedZone;
   public readonly alb: cdk.aws_elasticloadbalancingv2.IApplicationLoadBalancer;
 
@@ -25,6 +28,7 @@ export class DrSampleRegionalStack extends cdk.Stack {
 
     // VPC-related resources
     const network = new Network(this, "Network", {
+      cidr: props.cidr,
       azPrimary: props.azPrimary,
       azSecondary: props.azSecondary,
     });
@@ -54,6 +58,8 @@ export class DrSampleRegionalStack extends cdk.Stack {
     });
 
     // Add props
+    this.vpc = network.vpc;
+    this.region = this.region;
     this.hostedZone = service.hostedZone;
     this.alb = service.alb;
   }
