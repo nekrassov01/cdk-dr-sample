@@ -223,7 +223,7 @@ export class Service extends Construct {
     // Allocate EIPs for NLB
     const cfnLoadBalancer = this.nlb.node.defaultChild as cdk.aws_elasticloadbalancingv2.CfnLoadBalancer;
     cfnLoadBalancer.subnetMappings = props.vpc.publicSubnets.map((subnet, i) => {
-      const eip = new cdk.aws_ec2.CfnEIP(this, `NLBElasticIP${i}`, {
+      const eip = new cdk.aws_ec2.CfnEIP(this, `EIP${i}`, {
         domain: "vpc",
       });
       this.nlb.node.addDependency(eip);
