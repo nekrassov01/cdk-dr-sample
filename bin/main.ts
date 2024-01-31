@@ -93,7 +93,7 @@ const gaStack = new DrSampleGlobalStack(app, "DrSampleGlobalStack", {
   terminationProtection: false,
   crossRegionReferences: true,
   serviceName: serviceName,
-  globalDomainName: `${serviceName}.${hostedZoneName}`,
+  globalDomainName: globalDomainName,
   hostedZone: tokyoStack.hostedZone,
   albPrimary: tokyoStack.alb,
   albSecondary: osakaStack.alb,
