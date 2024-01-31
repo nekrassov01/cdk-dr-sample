@@ -21,34 +21,55 @@ export class Accelerator extends Construct {
     });
     accelerator.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
-    // Listener
-    const listener = accelerator.addListener("Listener", {
-      listenerName: `${props.serviceName}-accelerator-listener`,
+    // Endpoint for primary ALB
+    const albPrimary = new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albPrimary, {
+      weight: 128,
+      preserveClientIp: true,
+    });
+
+    // Endpoint for secondary ALB
+    const albSecondary = new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albSecondary, {
+      weight: 128,
+      preserveClientIp: true,
+    });
+
+    // Listener for HTTPS
+    const listenerHTTPS = accelerator.addListener("ListenerHTTPS", {
       protocol: cdk.aws_globalaccelerator.ConnectionProtocol.TCP,
-      portRanges: [{ fromPort: 443 }],
+      portRanges: [{ fromPort: 443, toPort: 443 }],
       clientAffinity: cdk.aws_globalaccelerator.ClientAffinity.SOURCE_IP,
     });
-    listener.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+    listenerHTTPS.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
 
-    // Endpoint group for ALB 1
-    listener.addEndpointGroup("EndpointGroup1", {
-      endpoints: [
-        new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albPrimary, {
-          weight: 128,
-          preserveClientIp: true,
-        }),
-      ],
+    // Add primary ALB to endpoint group for HTTPS listener
+    listenerHTTPS.addEndpointGroup("EndpointGroup1", {
+      endpoints: [albPrimary],
       trafficDialPercentage: 100,
     });
 
-    // Endpoint group for ALB 2
-    listener.addEndpointGroup("EndpointGroup2", {
-      endpoints: [
-        new cdk.aws_globalaccelerator_endpoints.ApplicationLoadBalancerEndpoint(props.albSecondary, {
-          weight: 128,
-          preserveClientIp: true,
-        }),
-      ],
+    // Add secondary ALB to endpoint group for HTTPS listener
+    listenerHTTPS.addEndpointGroup("EndpointGroup2", {
+      endpoints: [albSecondary],
+      trafficDialPercentage: 0,
+    });
+
+    // Listener for HTTP
+    const listenerHTTP = accelerator.addListener("ListenerHTTP", {
+      protocol: cdk.aws_globalaccelerator.ConnectionProtocol.TCP,
+      portRanges: [{ fromPort: 80, toPort: 80 }],
+      clientAffinity: cdk.aws_globalaccelerator.ClientAffinity.SOURCE_IP,
+    });
+    listenerHTTP.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+
+    // Add primary ALB to endpoint group for HTTP listener
+    listenerHTTP.addEndpointGroup("EndpointGroup1", {
+      endpoints: [albPrimary],
+      trafficDialPercentage: 100,
+    });
+
+    // Add secondary ALB to endpoint group for HTTP listener
+    listenerHTTP.addEndpointGroup("EndpointGroup2", {
+      endpoints: [albSecondary],
       trafficDialPercentage: 0,
     });
 
