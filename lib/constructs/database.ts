@@ -90,10 +90,10 @@ export class Database extends Construct {
     // Database cluster
     this.dbCluster = new cdk.aws_rds.DatabaseCluster(this, "DBCluster", {
       engine: mysqlEngine,
-      clusterIdentifier: `${props.serviceName}-${props.area}-db-cluster-1`,
+      clusterIdentifier: `${props.serviceName}-${props.area}-db-cluster`,
       defaultDatabaseName: props.serviceName,
       writer: cdk.aws_rds.ClusterInstance.serverlessV2("WriterInstance", {
-        instanceIdentifier: `${props.serviceName}-${props.area}-db-instance`,
+        instanceIdentifier: `${props.serviceName}-${props.area}-db-instance-1`,
         parameterGroup: dbInstanceParameterGroup,
         enablePerformanceInsights: true,
         allowMajorVersionUpgrade: false,
@@ -101,18 +101,18 @@ export class Database extends Construct {
         performanceInsightRetention: cdk.aws_rds.PerformanceInsightRetention.DEFAULT,
         publiclyAccessible: false,
       }),
-      readers: [
-        cdk.aws_rds.ClusterInstance.serverlessV2("ReaderInstance", {
-          instanceIdentifier: `${props.serviceName}-${props.area}-db-instance-2`,
-          parameterGroup: dbInstanceParameterGroup,
-          enablePerformanceInsights: true,
-          allowMajorVersionUpgrade: false,
-          autoMinorVersionUpgrade: true,
-          performanceInsightRetention: cdk.aws_rds.PerformanceInsightRetention.DEFAULT,
-          publiclyAccessible: false,
-          scaleWithWriter: true,
-        }),
-      ],
+      //readers: [
+      //  cdk.aws_rds.ClusterInstance.serverlessV2("ReaderInstance", {
+      //    instanceIdentifier: `${props.serviceName}-${props.area}-db-instance-2`,
+      //    parameterGroup: dbInstanceParameterGroup,
+      //    enablePerformanceInsights: true,
+      //    allowMajorVersionUpgrade: false,
+      //    autoMinorVersionUpgrade: true,
+      //    performanceInsightRetention: cdk.aws_rds.PerformanceInsightRetention.DEFAULT,
+      //    publiclyAccessible: false,
+      //    scaleWithWriter: true,
+      //  }),
+      //],
       serverlessV2MinCapacity: 0.5,
       serverlessV2MaxCapacity: 2.0,
       subnetGroup: dbSubnetGroup,
@@ -150,12 +150,11 @@ export class Database extends Construct {
 
     // Global Database
     if (props.isPrimaryDatabaseCluster) {
-      const globalDatabase = new cdk.aws_rds.CfnGlobalCluster(this, "GlobalDatabase", {
+      new cdk.aws_rds.CfnGlobalCluster(this, "GlobalDatabase", {
         globalClusterIdentifier: props.globalDatabaseIdentifier,
         sourceDbClusterIdentifier: this.dbCluster.clusterIdentifier,
         deletionProtection: false,
       });
-      globalDatabase.node.addDependency(this.dbCluster);
     } else {
       const cfnDbCluster = this.dbCluster.node.defaultChild as cdk.aws_rds.CfnDBCluster;
       cfnDbCluster.globalClusterIdentifier = props.globalDatabaseIdentifier;
