@@ -1,14 +1,52 @@
-# Welcome to your CDK TypeScript project
+cdk-dr-sample
+=============
 
-This is a blank project for CDK development with TypeScript.
+Sample CDK application for configure multi-region disaster recovery environment with AWS.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Requirements:
 
-## Useful commands
+- Static IP addresses disclosure
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+Branch
+------
+
+- pt1-nlb: Configuration pattern using NLB
+- pt2-ga: Configuration pattern using AWS GLobal Accelerator
+
+Diagram
+-------
+
+- NLB Pattern
+
+![diagram_pt1](docs/diagram_nlb.png)
+
+- AWS Global Accelerator Pattern
+
+![diagram_pt2](docs/diagram_ga.png)
+
+Prerequisites
+-------------
+
+First, define the context as follows:
+
+```json
+{
+  ...
+  "context": {
+    ...
+    "owner": "user",
+    "serviceName": "myapp",
+    "hostedZoneName": "your-domain.com"
+  }
+}
+```
+
+Usage
+-----
+
+Deploy resources with the following command:
+
+```sh
+npx cdk synth
+npx cdk deploy
+```
